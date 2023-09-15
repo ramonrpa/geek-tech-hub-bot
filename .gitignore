@@ -1,0 +1,15 @@
+.yarn/*
+.pnp.*
+
+.env
+package-lock.json
+yarn.lock
+
+.yarnrc.yml
+
+build
+node_modules
+
+*.sqlite
+
+dist/*

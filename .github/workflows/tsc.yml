@@ -1,0 +1,29 @@
+name: NodeJS with TypeScript
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+
+      - name: Run install
+        uses: Borales/actions-yarn@v4
+        with:
+          cmd: install
+
+      - name: Run Build
+        uses: Borales/actions-yarn@v4
+        with:
+          cmd: tsc
