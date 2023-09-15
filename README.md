@@ -61,6 +61,6 @@ Contribuições são bem-vindas! Se você deseja contribuir com melhorias, corre
 
 ## Licença
 
-Este projeto é licenciado sob a [Licença MIT](https://github.com/ramonrpa/geek-tech-hub-bot/blob/main/LICENSE.md).
+Este projeto é licenciado sob a [Licença MIT](https://github.com/ramonrpa/geek-tech-hub-bot/blob/main/LICENSE).
 
 Feito com ♥ por [Ramon Rodrigues](https://www.linkedin.com/in/ramon-rodrigues-pa/)
