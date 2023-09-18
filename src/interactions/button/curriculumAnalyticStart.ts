@@ -30,13 +30,28 @@ const interaction: BotInteraction = {
       "req_curriculum_channel",
     );
 
-    const channel = interaction.guild.channels.cache.get(
+    const channel = await interaction.guild.channels.fetch(
       requestChannelSetting.value,
-    ) as TextChannel;
+    );
 
-    const member = channel.members.get(request.member);
+    const member = await interaction.guild.members.fetch(request.member);
 
-    const thread = await channel.threads.create({
+    if (!channel.isTextBased()) {
+      interaction.reply({
+        embeds: [
+          {
+            description: "Ocorreu um erro.",
+            color: 16724787,
+          },
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const textChannel = channel as TextChannel;
+
+    const thread = await textChannel.threads.create({
       name: `Análise de ${request.name}`,
       autoArchiveDuration: 4320,
       type: ChannelType.PrivateThread,
@@ -61,8 +76,8 @@ const interaction: BotInteraction = {
       `,
       )
       .setAuthor({
-        iconURL: member.displayAvatarURL({ size: 128 }),
-        name: member.user.globalName || member.user.displayName,
+        iconURL: member?.displayAvatarURL({ size: 128 }),
+        name: member?.user?.globalName || member?.user?.displayName,
       });
 
     const button = new ButtonBuilder()
@@ -80,9 +95,11 @@ const interaction: BotInteraction = {
       components: [buttonRow],
     });
 
-    await thread.members.add(member);
+    await thread.members.add(member || request.member);
 
-    const administrators = channel.members.filter((member) =>
+    const allMembers = await interaction.guild.members.fetch();
+
+    const administrators = allMembers.filter((member) =>
       member.permissions.has(PermissionFlagsBits.Administrator),
     );
 
@@ -112,8 +129,8 @@ const interaction: BotInteraction = {
     `,
       )
       .setAuthor({
-        iconURL: member.user.displayAvatarURL({ size: 128 }),
-        name: member.user.globalName || member.user.displayName,
+        iconURL: member?.user.displayAvatarURL({ size: 128 }),
+        name: member?.user?.globalName || member?.user?.displayName,
       });
 
     await interaction.message.edit({

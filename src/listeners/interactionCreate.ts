@@ -47,7 +47,7 @@ const handleSlashCommand = async (
   await interaction.deferReply();
 
   try {
-    slashCommand.execute(interaction);
+    await slashCommand.execute(interaction);
   } catch (error) {
     await interaction.reply({
       embeds: [
@@ -85,9 +85,9 @@ const handleInteraction = async (
   }
 
   try {
-    botInteraction.execute(interaction as Interaction);
+    await botInteraction.execute(interaction as Interaction);
   } catch (error) {
-    await interaction.reply({
+    await interaction.followUp({
       embeds: [
         {
           description: "Ocorreu um erro.",

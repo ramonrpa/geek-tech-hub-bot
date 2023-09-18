@@ -211,9 +211,9 @@ const interaction: BotInteraction = {
           button,
         );
 
-      const adminChannel = interaction.guild.channels.cache.get(
+      const adminChannel = (await interaction.guild.channels.fetch(
         adminChannelSetting.value,
-      ) as TextChannel;
+      )) as TextChannel;
 
       await adminChannel.send({ embeds: [embed], components: [buttonRow] });
 
