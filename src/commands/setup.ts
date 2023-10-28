@@ -1,43 +1,70 @@
 import {
   ActionRowBuilder,
   ApplicationCommandType,
-  ChannelSelectMenuBuilder,
-  ChannelType,
+  ButtonBuilder,
+  ButtonStyle,
   CommandInteraction,
+  EmbedBuilder,
+  MessageActionRowComponentBuilder,
   PermissionFlagsBits,
 } from "discord.js";
 
 import { Command } from "../types";
+import { getChannel } from "../utils/channel";
 
 const setup: Command = {
   name: "setup",
-  description: "Configurar bot.",
+  description: "Setup",
   type: ApplicationCommandType.ChatInput,
   defaultMemberPermissions: PermissionFlagsBits.Administrator,
+  dmPermission: false,
   execute: async (interaction: CommandInteraction) => {
-    const channelReqSelectComponent = new ChannelSelectMenuBuilder()
-      .addChannelTypes(ChannelType.GuildText)
-      .setPlaceholder("Canal de requisição de análise.")
-      .setCustomId("curriculum_analytic_req_channel_select");
+    const curriculumUserChannel = await getChannel(
+      "curriculum_analytic-user",
+      interaction.guild,
+    );
+    const curriculumAdminChannel = await getChannel(
+      "curriculum_analytic-admin",
+      interaction.guild,
+    );
 
-    const channelAdminSelectComponent = new ChannelSelectMenuBuilder()
-      .addChannelTypes(ChannelType.GuildText)
-      .setPlaceholder("Canal da administração de análise.")
-      .setCustomId("curriculum_analytic_admin_channel_select");
+    if (curriculumUserChannel && curriculumAdminChannel) {
+      const embed = new EmbedBuilder()
+        .setColor("#cefe49")
+        .setTitle("Solicite sua análise de currículo.")
+        .setDescription(
+          "Clique abaixo para informar seus dados e solicitar sua análise.",
+        )
+        .setFooter({
+          iconURL: interaction.client.user.displayAvatarURL({ size: 128 }),
+          text: interaction.client.user.username,
+        });
 
-    const curriculumReqRow =
-      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
-        channelReqSelectComponent,
-      );
+      const button = new ButtonBuilder()
+        .setLabel("Solicitar Análise")
+        .setStyle(ButtonStyle.Success)
+        .setCustomId("curriculum_analytic_req_button");
 
-    const curriculumAdminRow =
-      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
-        channelAdminSelectComponent,
-      );
+      const button2 = new ButtonBuilder()
+        .setLabel("Status da sua Análise")
+        .setStyle(ButtonStyle.Primary)
+        .setCustomId("curriculum_analytic_status_button");
 
-    await interaction.editReply({
-      components: [curriculumReqRow, curriculumAdminRow],
-      content: "> Configure os canais",
+      const buttonRow =
+        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+          button,
+          button2,
+        );
+
+      await curriculumUserChannel.send({
+        embeds: [embed],
+        components: [buttonRow],
+      });
+    }
+
+    await interaction.followUp({
+      content: "Setup completo.",
+      ephemeral: true,
     });
   },
 };

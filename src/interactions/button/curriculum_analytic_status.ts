@@ -20,18 +20,7 @@ const interaction: BotInteraction = {
       },
     });
 
-    if (!request) {
-      await interaction.reply({
-        embeds: [
-          {
-            description: "Você não possui um pedido de análise.",
-            color: 4500206,
-          },
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
+    if (!request) throw new Error("Você não possui um pedido de análise.");
 
     const status = {
       pending: "Pendente",

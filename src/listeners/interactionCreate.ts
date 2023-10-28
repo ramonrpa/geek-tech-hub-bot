@@ -1,5 +1,6 @@
 import {
   ChatInputCommandInteraction,
+  EmbedBuilder,
   Events,
   Interaction,
   MessageComponentInteraction,
@@ -31,14 +32,13 @@ const handleSlashCommand = async (
   const slashCommand = bot.commands.find(
     (c) => c.name === interaction.commandName,
   );
+  const embed = new EmbedBuilder()
+    .setTitle("Ocorreu um erro")
+    .setColor("#FF3333");
+
   if (!slashCommand) {
     await interaction.reply({
-      embeds: [
-        {
-          description: "Ocorreu um erro.",
-          color: 16724787,
-        },
-      ],
+      embeds: [embed],
       ephemeral: true,
     });
     return;
@@ -49,17 +49,22 @@ const handleSlashCommand = async (
   try {
     await slashCommand.execute(interaction);
   } catch (error) {
-    await interaction.reply({
-      embeds: [
-        {
-          description: "Ocorreu um erro.",
-          color: 16724787,
-        },
-      ],
-      ephemeral: true,
-    });
+    embed.setDescription(error.message);
+    if (interaction.replied || interaction.deferred)
+      await interaction.followUp({
+        embeds: [embed],
+        ephemeral: true,
+      });
+    else
+      await interaction.reply({
+        embeds: [embed],
+        ephemeral: true,
+      });
 
-    Logger.error(error);
+    Logger.error(
+      `[${interaction.commandName}/${interaction.user.displayName}]`,
+      error,
+    );
   }
 };
 
@@ -71,14 +76,13 @@ const handleInteraction = async (
     if (it.id instanceof RegExp) return it.id.test(interaction.customId);
     return it.id === interaction.customId;
   });
+  const embed = new EmbedBuilder()
+    .setTitle("Ocorreu um erro")
+    .setColor("#FF3333");
+
   if (!botInteraction) {
     await interaction.reply({
-      embeds: [
-        {
-          description: "Ocorreu um erro.",
-          color: 16724787,
-        },
-      ],
+      embeds: [embed],
       ephemeral: true,
     });
     return;
@@ -87,17 +91,22 @@ const handleInteraction = async (
   try {
     await botInteraction.execute(interaction as Interaction);
   } catch (error) {
-    await interaction.followUp({
-      embeds: [
-        {
-          description: "Ocorreu um erro.",
-          color: 16724787,
-        },
-      ],
-      ephemeral: true,
-    });
+    embed.setDescription(error.message);
+    if (interaction.replied || interaction.deferred)
+      await interaction.followUp({
+        embeds: [embed],
+        ephemeral: true,
+      });
+    else
+      await interaction.reply({
+        embeds: [embed],
+        ephemeral: true,
+      });
 
-    Logger.error(error);
+    Logger.error(
+      `[${interaction.customId}/${interaction.user.displayName}]`,
+      error,
+    );
   }
 };
 

@@ -8,52 +8,44 @@ import {
   MessageActionRowComponentBuilder,
   PermissionFlagsBits,
   TextChannel,
+  ThreadAutoArchiveDuration,
 } from "discord.js";
 
 import { Request, RequestStatus } from "../../database/models/Request";
-import { Setting } from "../../database/models/Setting";
 import { BotInteraction } from "../../types";
+import { getChannel } from "../../utils/channel";
 
 const interaction: BotInteraction = {
   id: /curriculum_analytic_start_button-[\d]+/,
   execute: async (interaction: ButtonInteraction) => {
-    const [_, id] = interaction.customId.match(
-      /curriculum_analytic_start_button-([\d])+/,
-    );
-    let request = await Request.findByPk(id);
-
-    request = await request.update({
-      status: RequestStatus.IN_PROGRESS,
+    await interaction.deferReply({
+      ephemeral: true,
     });
 
-    const requestChannelSetting = await Setting.findByPk(
-      "req_curriculum_channel",
+    const curriculumUserChannel = await getChannel(
+      "curriculum_analytic-user",
+      interaction.guild,
     );
 
-    const channel = await interaction.guild.channels.fetch(
-      requestChannelSetting.value,
-    );
+    if (!curriculumUserChannel)
+      throw new Error("Canal `curriculum_analytic-user` não encontrado.");
+
+    const regex = /curriculum_analytic_start_button-([\d]+)/;
+    const match = regex.exec(interaction.customId);
+
+    const id = match[1];
+    const request = await Request.findByPk(id);
 
     const member = await interaction.guild.members.fetch(request.member);
 
-    if (!channel.isTextBased()) {
-      interaction.reply({
-        embeds: [
-          {
-            description: "Ocorreu um erro.",
-            color: 16724787,
-          },
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
+    if (!(curriculumUserChannel instanceof TextChannel))
+      throw new Error("`curriculum_analytic-user` não é um `TextChannel`");
 
-    const textChannel = channel as TextChannel;
+    if (!member) throw new Error("Usuário não encontrado");
 
-    const thread = await textChannel.threads.create({
+    const thread = await curriculumUserChannel.threads.create({
       name: `Análise de ${request.name}`,
-      autoArchiveDuration: 4320,
+      autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
       type: ChannelType.PrivateThread,
     });
 
@@ -76,14 +68,14 @@ const interaction: BotInteraction = {
       `,
       )
       .setAuthor({
-        iconURL: member?.displayAvatarURL({ size: 128 }),
-        name: member?.user?.globalName || member?.user?.displayName,
+        iconURL: member.user.displayAvatarURL({ size: 128 }),
+        name: member.user.globalName || member.user.displayName,
       });
 
     const button = new ButtonBuilder()
       .setLabel("Finalizar análise")
       .setStyle(ButtonStyle.Success)
-      .setCustomId(`curriculum_analytic_finish_button-${request.id}`);
+      .setCustomId(`curriculum_analytic_close_button-${request.id}`);
 
     const buttonRow =
       new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
@@ -95,17 +87,16 @@ const interaction: BotInteraction = {
       components: [buttonRow],
     });
 
-    await thread.members.add(member || request.member);
-
     const allMembers = await interaction.guild.members.fetch();
 
-    const administrators = allMembers.filter((member) =>
-      member.permissions.has(PermissionFlagsBits.Administrator),
-    );
+    await allMembers.map(async (member) => {
+      if (member.permissions.has(PermissionFlagsBits.Administrator))
+        await thread.members.add(member);
 
-    for (const member of administrators.values()) {
-      await thread.members.add(member);
-    }
+      return member;
+    });
+
+    await thread.members.add(member);
 
     await request.createMeta({
       key: "thread_id",
@@ -117,28 +108,23 @@ const interaction: BotInteraction = {
       value: message.id,
     });
 
-    const interactionEmbed = new EmbedBuilder()
-      .setColor("#cefe49")
-      .setTitle("Pedido de Análise")
-      .setDescription(
-        `
-      **Nome**: ${request.name}
-      **Email**: ${request.email}
-      **Canal**: ${thread}
-      [Currículo](${request.curriculum})
-    `,
-      )
-      .setAuthor({
-        iconURL: member?.user.displayAvatarURL({ size: 128 }),
-        name: member?.user?.globalName || member?.user?.displayName,
-      });
+    await request.update({ status: RequestStatus.IN_PROGRESS });
+
+    const interactionEmbed = interaction.message.embeds[0].toJSON();
+
+    interactionEmbed.description = `
+    **Nome**: ${request.name}
+    **Email**: ${request.email}
+    **Canal**: ${thread}
+    [Currículo](${request.curriculum})
+    `;
 
     await interaction.message.edit({
       embeds: [interactionEmbed],
       components: [],
     });
 
-    await interaction.deferUpdate();
+    await interaction.deleteReply();
   },
 };
 

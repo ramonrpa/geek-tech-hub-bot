@@ -68,6 +68,7 @@ Request.init(
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      autoIncrement: true,
     },
     member: {
       type: DataTypes.STRING,

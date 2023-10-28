@@ -7,14 +7,13 @@ import {
   EmbedBuilder,
   Message,
   MessageActionRowComponentBuilder,
-  TextChannel,
 } from "discord.js";
 import { once } from "events";
 
 import { FormQueue } from "../../database/models/FormQueue";
 import { Request } from "../../database/models/Request";
-import { Setting } from "../../database/models/Setting";
 import { BotInteraction } from "../../types";
+import { getChannel } from "../../utils/channel";
 
 const interaction: BotInteraction = {
   id: "curriculum_analytic_req_button",
@@ -22,6 +21,14 @@ const interaction: BotInteraction = {
     await interaction.deferReply({
       ephemeral: true,
     });
+
+    const curriculumAdminChannel = await getChannel(
+      "curriculum_analytic-admin",
+      interaction.guild,
+    );
+
+    if (!curriculumAdminChannel)
+      throw new Error("Canal `curriculum_analytic-admin` não encontrado.");
 
     const { user } = interaction;
 
@@ -33,33 +40,13 @@ const interaction: BotInteraction = {
       where: { member: user.id },
     });
 
-    if (request) {
-      await interaction.followUp({
-        embeds: [
-          {
-            description: `Você já possui um pedido de análise.
-            Clique em **Status da sua análise** para visualizar seu pedido.`,
-            color: 16724787,
-          },
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
+    if (request)
+      throw new Error(`Você já possui um pedido de análise.
+    Clique em **Status da sua análise** para visualizar seu pedido.`);
 
-    if (formQueue) {
-      await interaction.followUp({
-        embeds: [
-          {
-            description: `Você já possui um pedido de análise.
-            Vá ate seu privado para preencher seu formulário.`,
-            color: 16724787,
-          },
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
+    if (formQueue)
+      throw new Error(`Você já possui um pedido de análise.
+    Vá ate seu privado para preencher seu formulário.`);
 
     await FormQueue.create({
       member: user.id,
@@ -96,16 +83,8 @@ const interaction: BotInteraction = {
         where: { member: user.id },
       });
 
-      await interaction.followUp({
-        embeds: [
-          {
-            description: "Não foi possível enviar mensagem no seu privado.",
-            color: 16724787,
-          },
-        ],
-        ephemeral: true,
-      });
-      return;
+      throw new Error(`Você já possui um pedido de análise.
+      Vá ate seu privado para preencher seu formulário.`);
     }
 
     for (const question of questions) {
@@ -169,7 +148,7 @@ const interaction: BotInteraction = {
     }
 
     if (!error) {
-      await Request.create({
+      const request = await Request.create({
         member: user.id,
         name: answers.name,
         email: answers.email,
@@ -177,14 +156,6 @@ const interaction: BotInteraction = {
         extra: answers.extra,
         statusText: "",
       });
-
-      const request = await Request.findOne({
-        where: { member: user.id },
-      });
-
-      const adminChannelSetting = await Setting.findByPk(
-        "admin_curriculum_channel",
-      );
 
       const embed = new EmbedBuilder()
         .setColor("#cefe49")
@@ -211,13 +182,12 @@ const interaction: BotInteraction = {
           button,
         );
 
-      const adminChannel = (await interaction.guild.channels.fetch(
-        adminChannelSetting.value,
-      )) as TextChannel;
+      await curriculumAdminChannel.send({
+        embeds: [embed],
+        components: [buttonRow],
+      });
 
-      await adminChannel.send({ embeds: [embed], components: [buttonRow] });
-
-      user.send("> Seu pedido de análise foi enviado.");
+      await user.send("> Seu pedido de análise foi enviado.");
     }
 
     await FormQueue.destroy({
